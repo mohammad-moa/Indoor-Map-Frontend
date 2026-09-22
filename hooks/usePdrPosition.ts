@@ -20,16 +20,26 @@ const INITIAL_POSITION: Position = {
 const STEP_LENGTH = 0.65;
 const MIN_STEP_INTERVAL = 350;
 
-export function usePdrPosition() {
+interface UsePdrPositionOptions {
+  onPositionChange?: (position: Position) => void;
+}
+
+export function usePdrPosition({
+  onPositionChange,
+}: UsePdrPositionOptions = {}) {
   const [position, setPosition] = useState<Position>(INITIAL_POSITION);
 
   const [isTracking, setIsTracking] = useState(false);
 
   const lastStepTime = useRef(0);
-
   const lastAcceleration = useRef(0);
-
   const heading = useRef(0);
+
+  const onPositionChangeRef = useRef(onPositionChange);
+
+  useEffect(() => {
+    onPositionChangeRef.current = onPositionChange;
+  }, [onPositionChange]);
 
   useEffect(() => {
     if (!isTracking) {
@@ -79,15 +89,18 @@ export function usePdrPosition() {
 
       const deltaY = -Math.cos(angle) * STEP_LENGTH;
 
-      setPosition((current) => ({
-        ...current,
+      setPosition((current) => {
+        const nextPosition: Position = {
+          ...current,
+          x: current.x + deltaX,
+          y: current.y + deltaY,
+          timestamp: Date.now(),
+        };
 
-        x: current.x + deltaX,
+        onPositionChangeRef.current?.(nextPosition);
 
-        y: current.y + deltaY,
-
-        timestamp: Date.now(),
-      }));
+        return nextPosition;
+      });
     }
 
     window.addEventListener("devicemotion", handleMotion);
@@ -112,10 +125,14 @@ export function usePdrPosition() {
   function reset() {
     setIsTracking(false);
 
-    setPosition({
+    const nextPosition: Position = {
       ...INITIAL_POSITION,
       timestamp: Date.now(),
-    });
+    };
+
+    setPosition(nextPosition);
+
+    onPositionChangeRef.current?.(nextPosition);
   }
 
   return {
