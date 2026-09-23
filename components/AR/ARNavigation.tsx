@@ -14,12 +14,14 @@ import {
 
 function Arrow() {
   return (
-    <group position={[0, -0.5, -2]}>
+    <group position={[0, 0.3, -2]}>
+      {/* shaft */}
       <mesh rotation={[Math.PI / 2, 0, 0]}>
         <cylinderGeometry args={[0.08, 0.08, 1.2, 16]} />
         <meshBasicMaterial color="#00aaff" transparent opacity={0.9} />
       </mesh>
 
+      {/* arrow head */}
       <mesh position={[0, 0, -0.7]}>
         <coneGeometry args={[0.28, 0.55, 4]} />
         <meshBasicMaterial color="#00aaff" transparent opacity={0.95} />
