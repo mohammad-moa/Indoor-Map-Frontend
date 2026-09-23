@@ -1,7 +1,12 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  output: "export",
+  basePath: "/Indoor-Map-Frontend",
+  assetPrefix: "/Indoor-Map-Frontend/",
+  images: {
+    unoptimized: true,
+  },
 };
 
 export default nextConfig;
