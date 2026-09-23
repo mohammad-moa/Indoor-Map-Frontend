@@ -1,20 +1,35 @@
 /* eslint-disable react-hooks/purity */
 "use client";
 
-import { useCallback, useState } from "react";
+import {
+  useCallback,
+  useState,
+} from 'react';
 
-import { Map2D, Map3D } from "@/components/Map";
-import { DestinationSelector } from "@/components/Navigation";
-import { QRScanner } from "@/components/QR";
-import { floors } from "@/data/floors";
-import { landmarks } from "@/data/landmarks";
-import { navigationGraph } from "@/data/navigationGraph";
-import { useNavigation } from "@/hooks/useNavigation";
-import { usePdrPosition } from "@/hooks/usePdrPosition";
-import { QRPayload } from "@/types";
+import {
+  Map2D,
+  Map3D,
+} from '@/components/Map';
+import {
+  DestinationSelector,
+  NavigationView,
+} from '@/components/Navigation';
+import { QRScanner } from '@/components/QR';
+import {
+  floors,
+  landmarks,
+  navigationGraph,
+} from '@/data';
+import {
+  useNavigation,
+  useNavigationInstructions,
+  usePdrPosition,
+} from '@/hooks';
+import type { QRPayload } from '@/types';
 
 const NavigationPage = () => {
   const floor = floors[0];
+
   const [mapMode, setMapMode] = useState<"2d" | "3d">("2d");
 
   const navigation = useNavigation({
@@ -29,9 +44,11 @@ const NavigationPage = () => {
       timestamp: Date.now(),
     },
   });
+
   const { isTracking, start, stop, reset } = usePdrPosition({
     onPositionChange: navigation.updatePosition,
   });
+
   const {
     position,
     destinationId,
@@ -44,21 +61,15 @@ const NavigationPage = () => {
     selectDestination,
   } = navigation;
 
+  /*
+   * Turn-by-turn navigation
+   */
+  const { currentInstruction, distanceToInstruction } =
+    useNavigationInstructions(position, route, navigationGraph, arrived);
+
   const floorLandmarks = landmarks.filter(
     (landmark) => landmark.floorId === floor.id,
   );
-
-  const floorGraph = {
-    nodes: navigationGraph.nodes.filter((node) => node.floorId === floor.id),
-
-    edges: navigationGraph.edges.filter((edge) => {
-      const from = navigationGraph.nodes.find((node) => node.id === edge.from);
-
-      const to = navigationGraph.nodes.find((node) => node.id === edge.to);
-
-      return from?.floorId === floor.id && to?.floorId === floor.id;
-    }),
-  };
 
   const handleQRScan = useCallback(
     (payload: QRPayload) => {
@@ -149,7 +160,9 @@ const NavigationPage = () => {
           >
             Reset
           </button>
-          {/* <button
+
+          {/* 
+          <button
             onClick={() =>
               setPositionFromQR({
                 sourceId: "location-a",
@@ -159,10 +172,22 @@ const NavigationPage = () => {
             className="rounded-lg bg-green-600 px-4 py-2 text-white"
           >
             Test QR → Room 102
-          </button> */}
+          </button>
+          */}
         </div>
 
-        <div className="rounded-lg bg-white p-4 shadow-sm">
+        <div className="mt-4 rounded-lg bg-white p-4 shadow-sm">
+          {destination && (
+            <NavigationView
+              instructionType={currentInstruction?.type ?? null}
+              distanceToInstruction={distanceToInstruction}
+              remainingDistance={remainingDistance ?? 0}
+              destinationName={destination.name}
+              arrived={arrived}
+              offRoute={offRoute}
+            />
+          )}
+
           {arrived ? (
             <div className="text-center">
               <div className="text-lg font-bold text-green-600">

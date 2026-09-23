@@ -3,12 +3,13 @@
 import {
   useCallback,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 
 import { getRoute } from '@/services/navigation';
 import { getPositionFromQR } from '@/services/positioning';
-import { QRPayload } from '@/types';
+import type { QRPayload } from '@/types';
 import type { Landmark } from '@/types/map';
 import type {
   NavigationGraph,
@@ -38,6 +39,15 @@ export function useNavigation({
 
   const [route, setRoute] = useState<Route | null>(null);
 
+  /*
+   * Prevent repeated re-routing while the user
+   * remains outside the same route.
+   *
+   * This becomes false again when the user returns
+   * to the route.
+   */
+  const wasOffRouteRef = useRef(false);
+
   const destination = useMemo(() => {
     if (!destinationId) {
       return null;
@@ -54,6 +64,9 @@ export function useNavigation({
         return;
       }
 
+      /*
+       * If there is no route yet, create one.
+       */
       if (!route) {
         const nextRoute = getRoute({
           position: nextPosition,
@@ -62,23 +75,56 @@ export function useNavigation({
 
         setRoute(nextRoute);
 
+        wasOffRouteRef.current = false;
+
         return;
       }
 
+      /*
+       * Check arrival before checking off-route.
+       */
       const arrivedAtDestination = destination
         ? isArrived(nextPosition, destination)
         : false;
 
       if (arrivedAtDestination) {
+        wasOffRouteRef.current = false;
+
         return;
       }
 
-      const offRoute = isOffRoute(nextPosition, route, graph);
+      const currentlyOffRoute = isOffRoute(nextPosition, route, graph);
 
-      if (!offRoute) {
+      /*
+       * User is back on the route.
+       *
+       * Reset the re-routing guard so that if
+       * the user leaves the route again later,
+       * another re-route is allowed.
+       */
+      if (!currentlyOffRoute) {
+        wasOffRouteRef.current = false;
+
         return;
       }
 
+      /*
+       * User is outside the route.
+       *
+       * If we already re-routed for this
+       * off-route state, don't calculate A*
+       * again on every PDR update.
+       */
+      if (wasOffRouteRef.current) {
+        return;
+      }
+
+      wasOffRouteRef.current = true;
+
+      /*
+       * Calculate a new route from the user's
+       * current position to the same destination.
+       */
       const newRoute = getRoute({
         position: nextPosition,
         destinationId,
@@ -91,7 +137,6 @@ export function useNavigation({
 
   const setPositionFromQR = useCallback((payload: QRPayload) => {
     const qrPosition = getPositionFromQR(payload);
-    console.log(qrPosition);
 
     if (!qrPosition) {
       return false;
@@ -108,6 +153,11 @@ export function useNavigation({
 
     setRoute(newRoute);
 
+    /*
+     * QR gives us a new trusted starting point.
+     */
+    wasOffRouteRef.current = false;
+
     return true;
   }, []);
 
@@ -121,6 +171,12 @@ export function useNavigation({
       setDestinationId(nextDestinationId);
 
       setRoute(nextRoute);
+
+      /*
+       * A new destination means a completely
+       * new navigation session.
+       */
+      wasOffRouteRef.current = false;
     },
     [position],
   );
@@ -128,6 +184,8 @@ export function useNavigation({
   const clearDestination = useCallback(() => {
     setDestinationId(null);
     setRoute(null);
+
+    wasOffRouteRef.current = false;
   }, []);
 
   const remainingDistance = useMemo(() => {
