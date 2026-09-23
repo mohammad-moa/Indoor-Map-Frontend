@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect, useId } from "react";
+import {
+  useEffect,
+  useId,
+} from 'react';
 
-import type { QRPayload } from "@/types/qr";
+import type { QRPayload } from '@/types/qr';
 
 interface QRScannerProps {
   onScan: (payload: QRPayload) => void;
@@ -25,7 +28,7 @@ export const QRScanner = ({ onScan }: QRScannerProps) => {
           fps: 10,
           qrbox: {
             width: 220,
-            height: 200,
+            height: 300,
           },
         },
         (decodedText) => {
@@ -56,7 +59,5 @@ export const QRScanner = ({ onScan }: QRScannerProps) => {
     };
   }, [scannerId, onScan]);
 
-  return (
-    <div id={scannerId} className="w-full h-80 overflow-hidden rounded-xl" />
-  );
+  return <div id={scannerId} className="w-full overflow-hidden rounded-xl" />;
 };
