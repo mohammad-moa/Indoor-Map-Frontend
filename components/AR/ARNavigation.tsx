@@ -68,7 +68,7 @@ function Arrow() {
   );
 }
 
-export default function ARNavigation() {
+export const ARNavigation = () => {
   const store = useMemo(
     () =>
       createXRStore({
@@ -98,4 +98,4 @@ export default function ARNavigation() {
       </Canvas>
     </div>
   );
-}
+};
