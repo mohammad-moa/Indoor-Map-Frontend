@@ -1,5 +1,6 @@
 "use client";
 
+import { SurveyEvent } from '@/types';
 import type { Landmark } from '@/types/map';
 import type {
   NavigationGraph,
@@ -14,6 +15,8 @@ interface Map2DProps {
   landmarks: Landmark[];
   route?: Route | null;
   position?: Position | null;
+  surveyEvents?: SurveyEvent[];
+  onMapClick?: (position: { x: number; y: number }) => void;
 }
 
 const SVG_WIDTH = 800;
@@ -26,6 +29,8 @@ export const Map2D = ({
   landmarks,
   route,
   position,
+  surveyEvents = [],
+  onMapClick,
 }: Map2DProps) => {
   const scaleX = SVG_WIDTH / width;
   const scaleY = SVG_HEIGHT / height;
@@ -50,7 +55,29 @@ export const Map2D = ({
 
   return (
     <div className="w-full overflow-hidden rounded-xl border bg-white shadow-sm">
-      <svg viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`} className="h-auto w-full">
+      <svg
+        viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`}
+        className="h-auto w-full"
+        onClick={(event) => {
+          if (!onMapClick) {
+            return;
+          }
+
+          const svg = event.currentTarget;
+
+          const rect = svg.getBoundingClientRect();
+
+          const x = ((event.clientX - rect.left) / rect.width) * width;
+
+          const y =
+            height - ((event.clientY - rect.top) / rect.height) * height;
+
+          onMapClick({
+            x,
+            y,
+          });
+        }}
+      >
         {/* Map background */}
         <rect
           x="0"
@@ -155,6 +182,54 @@ export const Map2D = ({
               </g>
             );
           })()}
+
+        {surveyEvents.map((event) => {
+          const estimatedX = event.estimatedPosition.x;
+
+          const estimatedY = height - event.estimatedPosition.y;
+
+          if (!event.groundTruthPosition) {
+            return (
+              <circle
+                key={event.id}
+                cx={estimatedX}
+                cy={estimatedY}
+                r={0.18}
+                fill="red"
+              />
+            );
+          }
+
+          const groundTruthX = event.groundTruthPosition.x;
+
+          const groundTruthY = height - event.groundTruthPosition.y;
+
+          return (
+            <g key={event.id}>
+              {/* Error line */}
+              <line
+                x1={estimatedX}
+                y1={estimatedY}
+                x2={groundTruthX}
+                y2={groundTruthY}
+                stroke="orange"
+                strokeWidth={0.08}
+                strokeDasharray="0.2 0.1"
+              />
+
+              {/* Estimated PDR position */}
+              <circle cx={estimatedX} cy={estimatedY} r={0.18} fill="red" />
+
+              {/* Ground Truth position */}
+              <circle
+                cx={groundTruthX}
+                cy={groundTruthY}
+                r={0.18}
+                fill="green"
+              />
+            </g>
+          );
+        })}
       </svg>
     </div>
   );
